@@ -55,7 +55,8 @@ When setting enabled = true
 
 Grafana interface will have an option to sign in with OAuth
 
-![](RackMultipart20240119-1-crmiuq_html_9ea6bce3ff6686e4.jpg)
+![Image 1](https://i2.paste.pics/f3100935c5b86a38d40b546b096a7868.png?rand=g1hHt0OVDZ "Image 1")
+
 
 Note 2:
 
@@ -63,7 +64,8 @@ Note 2:
 
 **3.** Select Sign in with Oauth option to get redirected to Login page defined with auth\_url (Login page is different according to your application).
 
-![](RackMultipart20240119-1-crmiuq_html_a9ddaa9b7c7cdccb.png)
+![Image 2](https://i2.paste.pics/60a8549e50d08bb6eeed7b5d25cbace8.png?rand=7CYK0adDHn "Image 2")
+
 
 Notice the parameters in url
 
@@ -98,11 +100,11 @@ Notice the parameters in url
 
     });
 
-app.post('/token', (req, res) =\> {
+    app.post('/token', (req, res) =\> {
 
-  const { code, client\_id, client\_secret } =req.body;
+    const { code, client\_id, client\_secret } =req.body;
 
-  if (codes[code] &&clients[client\_id] &&clients[client\_id].secret===client\_secret) {
+    if (codes[code] &&clients[client\_id] &&clients[client\_id].secret===client\_secret) {
 
     constuser= { username:'user1', email:'user1@mail.com' }; // This should be the user's data
 
@@ -112,18 +114,18 @@ app.post('/token', (req, res) =\> {
 
     deletecodes[code];
 
-  } else {
+    } else {
     res.status(401).send('Unauthorized');
-  }
+    }
 
-});
+    });
 
-app.get('/user\_info', (req, res) =\> {
-
-  constauthHeader=req.headers.authorization;
-
-  if (authHeader) {
-    consttoken=authHeader.split(' ')[1];
+    app.get('/user\_info', (req, res) =\> {
+  
+    constauthHeader=req.headers.authorization;
+  
+    if (authHeader) {
+      consttoken=authHeader.split(' ')[1];
 
     jwt.verify(token, 'your\_jwt\_secret', (err, user) =\> {
 
@@ -139,11 +141,10 @@ app.get('/user\_info', (req, res) =\> {
       res.json(userData);
     });
 
-  } else {
+    } else {
     res.status(401).send('Unauthorized');
-  }
-
-});
+    }
+    });
 
 Note:
 
@@ -151,7 +152,7 @@ Note:
 
 **5.** And here we go
 
-![](RackMultipart20240119-1-crmiuq_html_85a23a14a7d7fde5.png)
+![Image 3](https://i2.paste.pics/32b7bbedac27e58ab6be7f9853d12411.png?rand=J4SgkhLfMj "Image 3")
 
 **6.** Issues that arise and solution:
 

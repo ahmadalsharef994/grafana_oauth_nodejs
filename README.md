@@ -1,13 +1,15 @@
-1. We start from configuring Grafana.ini file:
+"Implemented OAuth integration for Grafana; fixed network issues in Docker setup by adjusting domain settings and updated Grafana config (domain, root_url) for seamless OAuth flow. Resolved cookie handling and state management issues in server-side OAuth logic."
+
+
+
+**1.** start from configuring Grafana.ini file:
 
 
 #################################### Server ####################################
 **[server]**
 
-# The http port  to use
 http_port = 3001
 
-# The public facing domain name used to access grafana from a browser
 domain = host.docker.internal
 
 
@@ -47,7 +49,7 @@ Note:
 - Urls start with host.docker.internal because Grafana runs inside docker. Outside docker environment, only change urls to localhost
 - Domain: When configuring Grafana, it's crucial to set the `domain` in Grafana's configuration to match your host address. If Grafana is hosted on Docker, setting the domain to `host.docker.internal` can resolve issues related to redirect_uri and exchange tokens. This setting ensures that Grafana correctly interprets and routes requests within the network.
 
-2. We restart Grafana and navigate to the Grafana main page :
+**2.** restart Grafana and navigate to the Grafana main page :
 
 When setting enabled = true
 
@@ -59,7 +61,7 @@ Note 2:
 
 - In docker environment make sure you are accessing Grafana through host.docker.internal:3001 because using localhost:3001 will cause "missing saved state" error in Grafana as browser will have different domain than redirect\_uri = [http://host.docker.internal:3001/login/generic\_oauth](http://host.docker.internal:3001/login/generic_oauth)
 
-3. Select Sign in with Oauth option to get redirected to Login page defined with auth\_url (Login page is different according to your application).
+**3.** Select Sign in with Oauth option to get redirected to Login page defined with auth\_url (Login page is different according to your application).
 
 ![](RackMultipart20240119-1-crmiuq_html_a9ddaa9b7c7cdccb.png)
 
@@ -70,47 +72,39 @@ Notice the parameters in url
  &response\_type=code
  &scope=user%3Aemail+read%3Aorg&state=Bqmh-iuNXnJd8ps6567KjB9IM4R9qqSKCnTx-TiRjzc%3D](http://host.docker.internal:3000/login?client_id=12345&redirect_uri=http%3A%2F%2Flocalhost%3A3001%2Flogin%2Fgeneric_oauth&response_type=code&scope=user%3Aemail+read%3Aorg&state=Bqmh-iuNXnJd8ps6567KjB9IM4R9qqSKCnTx-TiRjzc%3D)
 
-4. After entering the correct credentials of your app (user1/password1 in our example). You will get redirected internally to redirect\_uri (http:///host.docker.internal:3001/login/generic\_oauth) where login/generic\_oauth is the default of Grafana and then Grafana will internally (without our notice) will request /token endpoint in our server to extract token. In this step, 3 endpoints will be hit from the api: /login (specified in LoginButton), /token and /user\_info (specified in token\_url and api\_url).
+**4.** After entering the correct credentials of your app (user1/password1 in our example). You will get redirected internally to redirect\_uri (http:///host.docker.internal:3001/login/generic\_oauth) where login/generic\_oauth is the default of Grafana and then Grafana will internally (without our notice) will request /token endpoint in our server to extract token. In this step, 3 endpoints will be hit from the api: /login (specified in LoginButton), /token and /user\_info (specified in token\_url and api\_url).
 
-app.post('/login', (req, res) =\> {
+    app.post('/login', (req, res) =\> {
 
-  const { username, password, client\_id, redirect\_uri, state } =req.body;
+      const { username, password, client\_id, redirect\_uri, state } =req.body;
 
-  // Check credentials and client\_id, redirect\_uri validation
+      // Check credentials and client\_id, redirect\_uri validation
 
-  if (username==='user1'&&password==='password1'&&
+      if (username==='user1'&&password==='password1'&&
+          clients[client\_id] &&clients[client\_id].redirectUri===redirect\_uri) {
 
-      clients[client\_id] &&clients[client\_id].redirectUri===redirect\_uri) {
+        // Generate authorization code
+        constcode=generateUniqueCode();
 
-    // Generate authorization code
+        codes[code] = { username, client\_id };
 
-    constcode=generateUniqueCode();
+        // Redirect with code and state and token in cookies
+        res.redirect(`${'http:///host.docker.internal:3001/login/generic\_oauth'}?code=${code}&state=${state}`);
 
-    codes[code] = { username, client\_id };
+      } else {
+        res.status(401).send('Unauthorized');
 
-    // Redirect with code and state and token in cookies
+      }
 
-    res.redirect(`${'http:///host.docker.internal:3001/login/generic\_oauth'}?code=${code}&state=${state}`);
-
-   } else {
-
-    // Invalid credentials or client details
-
-    res.status(401).send('Unauthorized');
-
-  }
-
-});
+    });
 
 app.post('/token', (req, res) =\> {
-
-  console.log('post /token')
 
   const { code, client\_id, client\_secret } =req.body;
 
   if (codes[code] &&clients[client\_id] &&clients[client\_id].secret===client\_secret) {
 
-    constuser= { username:'user1', email:'user1@mail.com' }; // This should be the authenticated user's data
+    constuser= { username:'user1', email:'user1@mail.com' }; // This should be the user's data
 
     constsecret='your\_jwt\_secret'; // Use a strong, secret value for JWT signing
 
@@ -119,51 +113,34 @@ app.post('/token', (req, res) =\> {
     deletecodes[code];
 
   } else {
-
     res.status(401).send('Unauthorized');
-
   }
 
 });
 
 app.get('/user\_info', (req, res) =\> {
 
-  console.log('GET /user\_info');
-
   constauthHeader=req.headers.authorization;
 
   if (authHeader) {
-
     consttoken=authHeader.split(' ')[1];
 
     jwt.verify(token, 'your\_jwt\_secret', (err, user) =\> {
 
-      if (err) {
-
-        returnres.sendStatus(403); // Forbidden access if token is invalid
-
-      }
 
       // User data to return. Modify according to your needs
 
       constuserData= {
-
-        username:crypto.randomBytes(20).toString('hex'),
-
-        email:crypto.randomBytes(20).toString('hex')
-
+        // here i am generating random username and email as user info
+        username:crypto.randomBytes(10).toString('hex'),
+        email:crypto.randomBytes(10).toString('hex')
         // Add more user fields as required
-
       };
-
       res.json(userData);
-
     });
 
   } else {
-
     res.status(401).send('Unauthorized');
-
   }
 
 });
@@ -172,11 +149,11 @@ Note:
 
 - Notice that /login here is POST handling login and generating code logic and is different than GET /login which is the interface of login.
 
-5. And here we go
+**5.** And here we go
 
 ![](RackMultipart20240119-1-crmiuq_html_85a23a14a7d7fde5.png)
 
-Issues that arise and solution:
+**6.** Issues that arise and solution:
 
 Throughout the process of setting up OAuth for Grafana, several key issues were addressed:
 
